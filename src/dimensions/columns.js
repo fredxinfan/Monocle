@@ -34,34 +34,57 @@ Monocle.Dimensions.Columns = function (pageDiv) {
 
     p.width = pdims.width;
 
-    var rules = Monocle.Styles.rulesToString(k.STYLE["columned"]);
-    rules += Monocle.Browser.css.toCSSDeclaration('column-width', pdims.col+'px');
-    rules += Monocle.Browser.css.toCSSDeclaration('column-gap', k.GAP+'px');
-    rules += Monocle.Browser.css.toCSSDeclaration('column-fill', 'auto');
-    rules += Monocle.Browser.css.toCSSDeclaration('transform', 'translateX(0)');
+    var cer = Monocle.Styles.rulesToString(k.STYLE['columned']);
+    cer += 'width: '+pdims.col+'px !important;';
+    cer += Monocle.Browser.css.toCSSDeclaration('column-width', pdims.col+'px');
+    cer += Monocle.Browser.css.toCSSDeclaration('column-gap', k.GAP+'px');
+    cer += Monocle.Browser.css.toCSSDeclaration('column-fill', 'auto');
+    cer += Monocle.Browser.css.toCSSDeclaration('transform', 'none');
 
     if (Monocle.Browser.env.forceColumns && ce.scrollHeight > pdims.height) {
-      rules += Monocle.Styles.rulesToString(k.STYLE['column-force']);
+      cer += Monocle.Styles.rulesToString(k.STYLE['column-force']);
       if (Monocle.DEBUG) {
         console.warn("Force columns ("+ce.scrollHeight+" > "+pdims.height+")");
       }
     }
 
-    if (ce.style.cssText != rules) {
-      // Update offset because we're translating to zero.
-      p.page.m.offset = 0;
+    var rules = [
+      'html#RS\\:monocle * {',
+        'max-width: '+pdims.col+'px !important;',
+      '}',
+      'img, video, audio, object, svg {',
+        'max-height: '+pdims.height+'px !important;',
+      '}'
+    ]
 
-      // IE10 hack.
-      if (Monocle.Browser.env.documentElementHasScrollbars) {
-        ce.ownerDocument.documentElement.style.overflow = 'hidden';
-      }
+    // IE10 hack.
+    if (Monocle.Browser.env.documentElementHasScrollbars) {
+      rules.push('html { overflow: hidden !important; }');
+    }
 
-      // Apply body style changes.
-      ce.style.cssText = rules;
+    rules = rules.join('\n');
 
-      if (Monocle.Browser.env.scrollToApplyStyle) {
-        ce.scrollLeft = 0;
-      }
+    var doc = p.page.m.activeFrame.contentDocument;
+    var head = doc.querySelector('head');
+    var sty = head.querySelector('style#monocle_column_rules');
+    if (!sty) {
+      sty = doc.createElement('style');
+      sty.id = 'monocle_column_rules';
+      head.appendChild(sty);
+    }
+
+    // Update offset because we're translating to zero.
+    p.page.m.offset = 0;
+
+    // Make sure that the frame is exactly the same width as the column.
+    p.page.m.activeFrame.style.width = p.width+'px';
+
+    // Apply style changes to the contents of the component.
+    ce.style.cssText = cer;
+    sty.innerHTML = rules;
+
+    if (Monocle.Browser.env.scrollToApplyStyle) {
+      ce.scrollLeft = 0;
     }
   }
 
@@ -83,9 +106,6 @@ Monocle.Dimensions.Columns = function (pageDiv) {
 
     var w = Math.max(bd.scrollWidth, de.scrollWidth);
 
-    // Add one because the final column doesn't have right gutter.
-    // w += k.GAP;
-
     if (!Monocle.Browser.env.widthsIgnoreTranslate && p.page.m.offset) {
       w += p.page.m.offset;
     }
@@ -95,20 +115,25 @@ Monocle.Dimensions.Columns = function (pageDiv) {
 
   function pageDimensions() {
     var elem = p.page.m.sheafDiv;
-    var w = elem.clientWidth;
-    if (elem.getBoundingClientRect) { w = elem.getBoundingClientRect().width; }
-    if (Monocle.Browser.env.roundPageDimensions) { w = Math.round(w); }
+    var w;
+    if (elem.getBoundingClientRect) {
+      w = elem.getBoundingClientRect().width;
+    } else {
+      w = elem.clientWidth;
+    }
+    w = Math.floor(w); // ensure it is an integer
+    w -= w % 2; // ensure it is an even number
     return { col: w, width: w + k.GAP, height: elem.clientHeight }
   }
 
 
   function columnCount() {
-    return Math.ceil(columnedWidth() / pageDimensions().width)
+    return Math.ceil(columnedWidth() / p.width)
   }
 
 
   function locusToOffset(locus) {
-    return pageDimensions().width * (locus.page - 1);
+    return p.width * (locus.page - 1);
   }
 
 
@@ -131,6 +156,7 @@ Monocle.Dimensions.Columns = function (pageDiv) {
     if (transition) {
       Monocle.Styles.affix(ce, "transition", transition);
     }
+    // NB: can't use setX as it causes a flicker on iOS.
     Monocle.Styles.affix(ce, "transform", "translateX(-"+offset+"px)");
   }
 
@@ -144,21 +170,22 @@ Monocle.Dimensions.Columns = function (pageDiv) {
       translateToOffset(0);
 
       // Store scroll offsets for all windows.
-      var win = s = p.page.m.activeFrame.contentWindow;
+      var win, s;
+      win = s = p.page.m.activeFrame.contentWindow;
       var scrollers = [
         [win, win.scrollX, win.scrollY],
         [window, window.scrollX, window.scrollY]
       ];
-      //while (s != s.parent) { scrollers.push([s, s.scrollX]); s = s.parent; }
 
+      var scroller, x;
       if (Monocle.Browser.env.sheafIsScroller) {
-        var scroller = p.page.m.sheafDiv;
-        var x = scroller.scrollLeft;
+        scroller = p.page.m.sheafDiv;
+        x = scroller.scrollLeft;
         target.scrollIntoView();
         offset = scroller.scrollLeft;
       } else {
-        var scroller = win;
-        var x = scroller.scrollX;
+        scroller = win;
+        x = scroller.scrollX;
         target.scrollIntoView();
         offset = scroller.scrollX;
       }
@@ -181,9 +208,6 @@ Monocle.Dimensions.Columns = function (pageDiv) {
     // Percent is the offset divided by the total width of the component.
     var percent = offset / (p.length * p.width);
 
-    // Page number would be offset divided by the width of a single page.
-    // var pageNum = Math.ceil(offset / pageDimensions().width);
-
     return percent;
   }
 
@@ -199,17 +223,16 @@ Monocle.Dimensions.Columns = function (pageDiv) {
 
 
 Monocle.Dimensions.Columns.STYLE = {
-  // Most of these are already applied to body, but they're repeated here
-  // in case columnedElement() is ever anything other than body.
-  "columned": {
-    "margin": "0",
-    "padding": "0",
-    "height": "100%",
-    "width": "100%",
-    "position": "absolute"
+  'columned': {
+    'border': 'none !important',
+    'margin': '0 !important',
+    'padding': '0 !important',
+    'height': '100% !important',
+    'position': 'absolute !important'
   },
-  "column-force": {
-    "min-width": "200%",
-    "overflow": "hidden"
+  'column-force': {
+    'width': '100% !important',
+    'min-width': '200% !important',
+    'overflow': 'hidden !important'
   }
 }

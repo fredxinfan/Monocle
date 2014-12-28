@@ -12,11 +12,15 @@ Monocle.Browser.uaMatch = function (test) {
 // Detect the browser engine and set boolean flags for reference.
 //
 Monocle.Browser.is = {
-  IE: !!(window.attachEvent && !Monocle.Browser.uaMatch('Opera')),
+  IE: !!(
+    (window.attachEvent && !Monocle.Browser.uaMatch('Opera')) ||
+    // IE 11
+    (window.navigator.appName == 'Netscape' && Monocle.Browser.uaMatch('Trident'))
+  ),
   Opera: Monocle.Browser.uaMatch('Opera'),
   WebKit: Monocle.Browser.uaMatch(/Apple\s?WebKit/),
-  Gecko: Monocle.Browser.uaMatch('Gecko') && !Monocle.Browser.uaMatch('KHTML'),
-  MobileSafari: Monocle.Browser.uaMatch(/AppleWebKit.*Mobile/)
+  Gecko: Monocle.Browser.uaMatch(/Gecko\//),
+  MobileSafari: Monocle.Browser.uaMatch(/OS \d_.*AppleWebKit.*Mobile/)
 }
 
 
@@ -49,6 +53,7 @@ Monocle.Browser.on = {
   BlackBerry: Monocle.Browser.uaMatch('BlackBerry'),
   Android: (
     Monocle.Browser.uaMatch('Android') ||
+    Monocle.Browser.uaMatch('Silk') ||
     Monocle.Browser.uaMatch(/Linux;.*EBRD/) // Sony Readers
   ),
   MacOSX: (
@@ -77,21 +82,31 @@ Monocle.Browser.iOSVersionBelow = function (strOrNum) {
 }
 
 
+if (Monocle.Browser.is.IE) {
+  (function () {
+    var version = navigator.userAgent.match(/(rv:|MSIE )(\d*\.\d*)/)[2];
+    Monocle.Browser.ieVersion = Number(version);
+  })();
+}
+
+
 // Some browser environments are too slow or too problematic for
 // special animation effects.
 //
 // FIXME: These tests are too opinionated. Replace with more targeted tests.
 //
-Monocle.Browser.renders = {
-  eInk: Monocle.Browser.on.Kindle3,
-  slow: Monocle.Browser.on.Android || Monocle.Browser.on.Blackberry
-}
-
-
-// A helper class for sniffing CSS features and creating CSS rules
-// appropriate to the current rendering engine.
-//
-Monocle.Browser.css = new Monocle.CSS();
+Monocle.Browser.renders = (function () {
+  var ua = navigator.userAgent;
+  var caps = {};
+  caps.eInk = Monocle.Browser.on.Kindle3;
+  caps.slow = (
+    caps.eInk ||
+    (Monocle.Browser.on.Android && !ua.match(/Chrome/)) ||
+    Monocle.Browser.on.Blackberry ||
+    ua.match(/NintendoBrowser/)
+  );
+  return caps;
+})();
 
 
 // During Reader initialization, this method is called to create the
@@ -103,6 +118,7 @@ Monocle.Browser.css = new Monocle.CSS();
 //
 Monocle.Browser.survey = function (callback) {
   if (!Monocle.Browser.env) {
+    Monocle.Browser.css = new Monocle.CSS();
     Monocle.Browser.env = new Monocle.Env();
     Monocle.Browser.env.survey(callback);
   } else if (typeof callback == "function") {

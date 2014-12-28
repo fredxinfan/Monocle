@@ -5,8 +5,6 @@ A silky, tactile browser-based ebook reader.
 Initial development by Joseph Pearson of Inventive Labs. Released under the
 MIT license.
 
-More information (including demos): http://monocle.inventivelabs.com.au
-
 Contributions welcome - fork the repository on
 [GitHub](http://github.com/joseph/monocle).
 
@@ -17,16 +15,19 @@ you can ask them here: https://groups.google.com/forum/#!forum/monocle-js
 
 ## Getting Monocle
 
-You can download a unified, redistributable version of Monocle 
-[from Github](https://github.com/joseph/Monocle/downloads).
+There's a few different ways to get Monocle. The easiest way to explore
+it is from the test site, which is always running the latest `master`:
+
+http://test.monoclejs.com/test
+
+To grab the code for your own use, see:
+
+https://github.com/joseph/Monocle/wiki/Getting-Monocle-running
 
 The scripts and stylesheets are separated into:
 
 * `monocore` - the essential Monocle functionality
 * `monoctrl` - the optional basic controls for page numbers, font-sizing, etc
-
-It's recommended that you develop against the unminified files, to make 
-debugging easier. In production, use the minified files.
 
 
 ## Integrating Monocle
@@ -60,18 +61,10 @@ A more advanced scenario involves feeding Monocle a "book data object", from
 which it can lazily load the contents of the book as the user requests it.
 
 
-## Exploring Monocle
-
-If you want to explore all of Monocle's features, clone this repository and
-open `test/index.html` in your browser. This will guide you through Monocle's
-tests, which incidentally demonstrate all the major features. View source or
-browse the test directory in your text editor for implementation details.
-
-
 ## Connecting Monocle to your book content
 
-For a non-trivial Monocle implementation, your task is to connect the 
-Monocle Reader to your book's HTML content and structure. You create 
+For a non-trivial Monocle implementation, your task is to connect the
+Monocle Reader to your book's HTML content and structure. You create
 something called "the book data object" to do this.
 
 The book data object is really pretty simple. You'll find the specification
@@ -122,6 +115,16 @@ on GitHub).
 
 
 ## History
+
+3.2.0 - A new event management subsystem, called Gala, replacing the old
+        Monocle.Events. Gala unifies touch and mouse event registration
+        a lot better. It also works as a standalone library, if you need that -
+        there are no dependencies on other parts of Monocle.
+
+3.1.0 - Numerous stability fixes, plus improvements for Android and Opera,
+        including minor API changes to flippers and slow-browser detection.
+
+3.0.1 - Bugfixes for component loading, cancelling magic panel contacts.
 
 3.0.0 - Magic panel, IE10 support, iOS6 support, better Android support,
         selection events, billboard feature, Monocle.Formatting to clean up
